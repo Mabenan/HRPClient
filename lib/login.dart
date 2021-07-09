@@ -2,8 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
-import 'globals.dart' as globals;
-
 class LoginWidget extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => _LoginWidgetState();
@@ -18,24 +16,27 @@ class _LoginWidgetState extends State<LoginWidget> {
 
     ParseResponse resp = await user.login();
     if (resp.success) {
-      Navigator.pushReplacementNamed(context, "init");
+      Navigator.pushReplacementNamed(context, "main");
+    }else{
+
+      showDialog(
+          context: context,
+          builder: (cntx) => AlertDialog(
+              title: Text("Login Failed: " + resp.error.message)));
     }
   }
 
   void checkLogin() async {
     ParseUser user = await ParseUser.currentUser();
     if (user != null) {
-      if (!await globals.isOffline()) {
-        globals.forcedOffline = true;
-        Navigator.pushReplacementNamed(context, "init");
-        ParseResponse resp = await user.getUpdatedUser();
-        if (resp.success) {
-          globals.forcedOffline = false;
-        }else{
-          globals.forcedOffline = true;
-        }
-      }else{
-        Navigator.pushReplacementNamed(context, "init");
+      ParseResponse resp = await user.getUpdatedUser();
+      if (resp.success) {
+        Navigator.pushReplacementNamed(context, "main");
+      } else {
+        showDialog(
+            context: context,
+            builder: (cntx) => AlertDialog(
+                title: Text("Login Failed: " + resp.error.message)));
       }
     }
   }

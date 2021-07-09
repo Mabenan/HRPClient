@@ -1,119 +1,267 @@
+import 'package:hrp/login.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hrp/markets.dart';
+import 'package:hrp/priceAdjustDetail.dart';
+import 'package:hrp/pricesToAdjust.dart';
+import 'package:hrp/receipts.dart';
+import 'package:hrp/recipes.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'globals.dart' as globals;
+import 'package:rxdart/rxdart.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await init();
   runApp(MyApp());
 }
 
+Future<void> init() async {
+  await globals.initParse();
+}
+
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Home Resource Planning'),
+      title: 'HRP',
+      theme:
+          ThemeData(brightness: Brightness.dark, primarySwatch: Colors.orange),
+      home: PageWrapper(),
+      navigatorKey: globals.navigatorKey,
     );
   }
 }
 
+class PageWrapper extends StatefulWidget {
+  PageWrapper({Key key}) : super(key: key);
+  @override
+  _PageWrapperState createState() => _PageWrapperState();
+}
+
+class _PageWrapperState extends State<PageWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      initialRoute: "login",
+      onGenerateRoute: routes,
+    );
+  }
+
+  MaterialPageRoute routes(RouteSettings settings) {
+    WidgetBuilder builder;
+    switch (settings.name) {
+      case "main":
+        builder = (BuildContext _) => MyHomePage();
+        break;
+      case "login":
+        builder = (BuildContext _) => LoginWidget();
+        break;
+    }
+    return MaterialPageRoute(builder: builder, settings: settings);
+  }
+}
+
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  MyHomePage({Key key}) : super(key: key);
+  final String title = "HRP";
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class NavObs extends NavigatorObserver {
+  final GlobalKey<NavigatorState> subRoute = GlobalKey();
+  final _canPopStream = BehaviorSubject<bool>();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  Stream<bool> get canPopStream => _canPopStream.stream;
+  NavObs();
+
+  @override
+  void didPop(Route route, Route previousRoute) {
+    super.didPop(route, previousRoute);
+    route.changedExternalState(); // ignore: invalid_use_of_protected_member
+    _canPopStream.add(navigator.canPop());
+  }
+
+  @override
+  void didPush(Route route, Route previousRoute) {
+    super.didPush(route, previousRoute);
+    _canPopStream.add(navigator.canPop());
+  }
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final obServer = NavObs();
+
+  double leadingWidth = 48.0;
+
+  _MyHomePageState() : super(){
+    obServer.canPopStream.listen((event) {
+      setState(() {
+        if(event) {
+          this.leadingWidth = 48.0 * 2;
+        }else{
+          setState(() {
+            this.leadingWidth = 48.0;
+          });
+
+        }
+      });
+
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            TextButton(onPressed: () => { 
-              print("Test")
-            }, child: Text('YEAH')),
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+    return new WillPopScope(
+      onWillPop: () =>
+          Future.value(Navigator.of(obServer.subRoute.currentContext).canPop()),
+      child: Scaffold(
+        drawer: Drawer(
+          child: ListView(
+            // Important: Remove any padding from the ListView.
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              DrawerHeader(
+                child: Text('Menu'),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                ),
+              ),
+              ListTile(
+                title: Text('Recipe'),
+                onTap: () {
+                  Navigator.of(obServer.subRoute.currentContext)
+                      .pushNamedAndRemoveUntil("main/recipes", (route) => false);
+                },
+              ),
+              ListTile(
+                title: Text('Receipe'),
+                onTap: () {
+                  Navigator.of(obServer.subRoute.currentContext)
+                      .pushNamedAndRemoveUntil("main/receipes", (route) => false);
+                },
+              ),
+              ListTile(
+                title: Text('Market'),
+                onTap: () {
+                  Navigator.of(obServer.subRoute.currentContext)
+                      .pushNamedAndRemoveUntil("main/markets", (route) => false);
+                },
+              ),
+            ],
+          ),
+        ),
+        appBar: AppBar(
+          leadingWidth: leadingWidth,
+          leading: Row(
+            children: <Widget>[
+              IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(obServer.subRoute.currentContext).openDrawer(),
+                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+              ),
+              StreamBuilder<bool>(
+                  stream: obServer.canPopStream,
+                  initialData: false,
+                  builder: (BuildContext cntx, AsyncSnapshot<bool> snap) {
+                    if (snap.data) {
+                      return ConstrainedBox(
+                        constraints: BoxConstraints.tightFor(width: 40.0),
+                        child: BackButton(
+                          onPressed: () => {
+                            Navigator.of(obServer.subRoute.currentContext)
+                                .maybePop(true)
+                          },
+                        ),
+                      );
+                    } else {
+                      return Container();
+                    }
+                  }),
+            ],
+          ),
+          title: StreamBuilder<String>(
+            stream: globals.titleStream,
+            initialData: "HRP",
+            builder: (context, snapshot) {
+              return Text(snapshot.data);
+            },
+          ),
+          actions: [
+            IconButton(
+              onPressed: () => {
+                ParseUser.currentUser().then((user) => {
+                      user.logout(),
+                      Navigator.pushReplacement(context,
+                          MaterialPageRoute(builder: (_) => LoginWidget()))
+                    })
+              },
+              icon: Icon(
+                Icons.logout,
+                size: 26.0,
+              ),
             ),
           ],
         ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Navigator(
+                key: obServer.subRoute,
+                initialRoute: "main/recipes",
+                onGenerateRoute: routes,
+                observers: [obServer],
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: StreamBuilder<Future<Null> Function()>(
+          stream: globals.floatActHandlStream,
+          initialData: null,
+          builder: (context, snapshot) {
+            if (snapshot.data != null) {
+              return FloatingActionButton(
+                child: const Icon(Icons.add),
+                onPressed: () => snapshot.data(),
+              );
+            } else {
+              return Container();
+            }
+          },
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-      drawer: Drawer(child: ListView(children: [new TextButton(onPressed: () => {
-
-      }, child: Text('Test Nav'))],),),
     );
+  }
+
+  MaterialPageRoute routes(RouteSettings settings) {
+    WidgetBuilder builder;
+    switch (settings.name) {
+      case "main/recipes":
+        builder = (BuildContext _) => RecipesWidget();
+        break;
+      case "main/receipes":
+        builder = (BuildContext _) => ReceiptsWidget();
+        break;
+      case "main/markets":
+        builder = (BuildContext _) => MarketsWidget();
+        break;
+      case "sub/market":
+        builder = (BuildContext _) => MarketDetailWidget(market: (settings.arguments as MarketDetailArgument).market);
+        break;
+      case "sub/pricesToAdjust":
+        builder = (BuildContext _) => PriceToAdjust(
+            receipt:
+                (settings.arguments as PriceToAdjustRouteArguments).receipt);
+        break;
+      case "sub/priceAdjustDetail":
+        builder = (BuildContext _) => PriceAdjustDetail(
+          price:
+          (settings.arguments as PriceAdjustDetailArguments).price
+        );
+        break;
+    }
+    return MaterialPageRoute(builder: builder, settings: settings);
   }
 }

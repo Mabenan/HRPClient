@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:hrp/data/price.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'globals.dart' as globals;
 
-class ReceipesWidget extends StatefulWidget {
+class PricesWidget extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() => ReceipesWidgetState();
+  State<StatefulWidget> createState() => PricesWidgetState();
 }
 
-class ReceipesWidgetState extends State<ReceipesWidget> {
-  final QueryBuilder<Receipe> query =
-      (QueryBuilder<Receipe>(Receipe())..orderByAscending("Name"));
+class PricesWidgetState extends State<PricesWidget> {
+  final QueryBuilder<Price> query =
+      (QueryBuilder<Price>(Price())..orderByAscending("Name"));
   final LiveQuery liveQuery = LiveQuery(autoSendSessionId: true);
-  Subscription<Receipe> sub;
-  List<Receipe> _receipes = List<Receipe>.empty(growable: true);
+  Subscription<Price> sub;
+  List<Price> _prices = List<Price>.empty(growable: true);
 
-  ReceipesWidgetState() : super() {
+  PricesWidgetState() : super() {
     this.init();
   }
 
@@ -23,28 +24,29 @@ class ReceipesWidgetState extends State<ReceipesWidget> {
     sub.on(LiveQueryEvent.create, (value) {
       getData();
     });
-    sub.on(LiveQueryEvent.delete, (Receipe value) {
+    sub.on(LiveQueryEvent.delete, (Price value) {
       getData();
     });
-    sub.on(LiveQueryEvent.update, (Receipe value) {
+    sub.on(LiveQueryEvent.update, (Price value) {
       getData();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    globals.setTitle("Prices");
     globals.setActualFloatingActionHandler(() async {
-      var receipe = new Receipe();
+      var price = new Price();
       setState(() {
-        _receipes.add(receipe);
+        _prices.add(price);
       });
-      receipe.save();
+      price.save();
     });
-    if(_receipes.length == 0){
+    if(_prices.length == 0){
       getData();
     }
     return Container(
-      child: _receipes.length != 0
+      child: _prices.length != 0
           ? getList(context)
           : Center(
               child: CircularProgressIndicator(),
@@ -55,9 +57,9 @@ class ReceipesWidgetState extends State<ReceipesWidget> {
   getList(BuildContext context) {
     return RefreshIndicator(
         child: ListView.builder(
-          itemCount: _receipes.length,
+          itemCount: _prices.length,
           itemBuilder: (BuildContext context, int index) {
-            return buildChilds(context, _receipes.elementAt(index));
+            return buildChilds(context, _prices.elementAt(index));
           },
         ),
         onRefresh: getData);
@@ -67,18 +69,18 @@ class ReceipesWidgetState extends State<ReceipesWidget> {
     print("refresh");
     var result = (await query.query());
     setState(() {
-      _receipes = List<Receipe>.from(result.results.map((e) => e as Receipe));
+      _prices = List<Price>.from(result.results.map((e) => e as Price));
     });
   }
 
-  buildChilds(BuildContext context, Receipe elementAt) {
+  buildChilds(BuildContext context, Price elementAt) {
     if(elementAt.objectId != null) {
       return Card(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(elementAt.get("Processed").toString()),
+            Text(elementAt.name),
           ],
         ),
       );
@@ -92,11 +94,3 @@ class ReceipesWidgetState extends State<ReceipesWidget> {
   }
 }
 
-class Receipe extends ParseObject {
-  Receipe() : super("Receipe");
-  Receipe.clone() : this();
-
-  @override
-  clone(Map map) => Receipe.clone()..fromJson(map);
-
-}
